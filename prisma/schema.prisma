@@ -1,0 +1,175 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================= ENUMS =========================
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  CASHIER
+  CUSTOMER
+  OWNER_BRANCH
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+// ========================= MODELS =========================
+
+model User {
+  id             Int           @id @default(autoincrement())
+  name           String
+  email          String        @unique
+  password       String
+  phone          String?
+  role           Role          @default(CUSTOMER)
+  createdAt      DateTime      @default(now())
+  branchId       Int?
+  branch         Branch?       @relation("BranchCashiers", fields: [branchId], references: [id])
+  ownerBranches  Branch[]      @relation("OwnerBranch")
+  restaurants    Restaurant[]
+  orders         Order[]
+}
+
+
+// ----------------- Restaurant -----------------
+model Restaurant {
+ id           Int          @id @default(autoincrement())
+  name         String       @unique
+  cuisine      String?      
+  imageUrl     String?     
+  rating       Float?       @default(4.8)
+  createdAt  DateTime   @default(now())
+
+  ownerId    Int
+  owner      User       @relation(fields: [ownerId], references: [id])
+  branches   Branch[]
+  categories Category[] @relation("RestaurantCategories")
+  orders     Order[]
+  menus  Menu[] // المنيو العامة للمطعم
+}
+
+model Branch {
+  id             Int           @id @default(autoincrement())
+  name           String
+  address        String
+  phone          String?
+  deliveryTime   String?     
+  hasOffer       Boolean      @default(false)
+  offer          Int?         // نسبة الخصم
+  reviews        Int?           
+  minOrder       Float?       @default(0)
+  createdAt      DateTime      @default(now())
+
+  ownerBranchId  Int
+  ownerBranch    User          @relation("OwnerBranch", fields: [ownerBranchId], references: [id])
+  cashiers       User[]        @relation("BranchCashiers")
+  restaurantId   Int
+
+  restaurant     Restaurant    @relation(fields: [restaurantId], references: [id])
+  orders         Order[]
+  menus      Menu[]
+}
+
+
+model Menu {
+  id            Int          @id @default(autoincrement())
+  name          String
+  description   String?
+  imageUrl      String?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+
+  // 🔹 ممكن تبقى المنيو للمطعم كله أو لفرع معين
+  restaurantId  Int?
+  branchId      Int?
+
+  restaurant    Restaurant?  @relation(fields: [restaurantId], references: [id])
+  branch        Branch?      @relation(fields: [branchId], references: [id])
+
+  // 🔹 تحتوي على عناصر المنيو (الأطباق)
+  menuItems    MenuItem[]  @relation("MenuToMenuItem")
+}
+
+
+// ----------------- Category -----------------
+model Category {
+  id            Int           @id @default(autoincrement())
+  name          String
+  restaurants   Restaurant[]  @relation("RestaurantCategories")
+  subCategories SubCategory[]
+}
+
+// ----------------- SubCategory -----------------
+model SubCategory {
+  id         Int        @id @default(autoincrement())
+  name       String
+  categoryId Int
+  category   Category   @relation(fields: [categoryId], references: [id])
+  menuItems  MenuItem[]
+}
+
+
+
+// ----------------- MenuItem -----------------
+model MenuItem {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  createdAt   DateTime  @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // 🔹 العلاقة الجديدة مع Menu
+  isAvailable   Boolean       @default(true)
+  menus        Menu[]       @relation("MenuToMenuItem")
+  // menu        Menu      @relation(fields: [menuId], references: [id])
+
+  subCategoryId Int?
+  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id])
+
+  orderItems    OrderItem[]
+}
+
+
+// ----------------- Order -----------------
+model Order {
+  id           Int         @id @default(autoincrement())
+  userId       Int
+  branchId     Int
+  restaurantId Int
+  totalPrice   Float
+  status       OrderStatus @default(PENDING)
+  createdAt    DateTime    @default(now())
+
+  user       User        @relation(fields: [userId], references: [id])
+  branch     Branch      @relation(fields: [branchId], references: [id])
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id])
+  orderItems OrderItem[]
+}
+
+// ----------------- OrderItem -----------------
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  menuItemId Int
+  quantity   Int      @default(1)
+  price      Float
+  total      Float
+  createdAt  DateTime @default(now())
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+}
