@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { existsSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import { PrismaService } from 'prisma/prisma.service';
 import { CreateRestaurantDto } from '../dto/restaurant/create-restaurant.dto';
 import { UpdateRestaurantDto } from '../dto/restaurant/update-restaurant.dto';
@@ -36,6 +38,10 @@ export class RestaurantService {
         cuisine: dto.cuisine,
         imageUrl: dto.imageUrl,
       },
+      include: {
+        owner: { select: { id: true, name: true } },
+        branches: { select: { id: true, name: true, address: true } },
+      },
     });
 
     return {
@@ -47,6 +53,9 @@ export class RestaurantService {
   async getAllRestaurants() {
     const restaurants = await this.prisma.restaurant.findMany({
       include: {
+        owner: {
+          select: { id: true, name: true },
+        },
         branches: {
           select: { id: true, name: true, address: true },
         },
@@ -59,7 +68,9 @@ export class RestaurantService {
     const restaurant = await this.prisma.restaurant.findUnique({
       where: { id },
       include: {
-        branches: true,
+        branches: {
+          select: { id: true, name: true, address: true },
+        },
         owner: {
           select: { id: true, name: true },
         },
@@ -83,7 +94,19 @@ export class RestaurantService {
         cuisine: dto.cuisine ?? existing.cuisine,
         imageUrl: dto.imageUrl ?? existing.imageUrl,
       },
+      include: {
+        owner: { select: { id: true, name: true } },
+        branches: { select: { id: true, name: true, address: true } },
+      },
     });
+
+    if (
+      dto.imageUrl &&
+      existing.imageUrl &&
+      dto.imageUrl !== existing.imageUrl
+    ) {
+      this.removeImageFile(existing.imageUrl);
+    }
 
     return {
       message: 'تم تعديل المطعم بنجاح',
@@ -96,6 +119,25 @@ export class RestaurantService {
     if (!exists) throw new NotFoundException('هذا المطعم غير موجود');
 
     await this.prisma.restaurant.delete({ where: { id } });
+    if (exists.imageUrl) {
+      this.removeImageFile(exists.imageUrl);
+    }
     return { message: 'تم حذف المطعم بنجاح' };
+  }
+
+  private removeImageFile(imageUrl: string) {
+    if (!imageUrl.startsWith('/uploads/')) {
+      return;
+    }
+    const relative = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+    const absolutePath = join(process.cwd(), relative);
+    if (existsSync(absolutePath)) {
+      try {
+        unlinkSync(absolutePath);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to remove image file', error);
+      }
+    }
   }
 }

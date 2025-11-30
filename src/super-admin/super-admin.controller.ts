@@ -22,7 +22,6 @@ import { UpdateRestaurantDto } from './dto/restaurant/update-restaurant.dto';
 @Controller('superAdmin')
 export class SuperAdminController {
   constructor(private readonly superAdminService: SuperAdminService) {}
-
   @Post('restaurant/create')
   createRestaurant(@Body() dto: CreateRestaurantDto) {
     return this.superAdminService.createRestaurant(dto);

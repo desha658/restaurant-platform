@@ -45,20 +45,20 @@ model User {
 
 // ----------------- Restaurant -----------------
 model Restaurant {
- id           Int          @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   name         String       @unique
   cuisine      String?      
   imageUrl     String?     
   rating       Float?       @default(4.8)
-  createdAt  DateTime   @default(now())
+  createdAt    DateTime     @default(now())
 
-  ownerId    Int
-  owner      User       @relation(fields: [ownerId], references: [id])
-  branches   Branch[]
-  categories Category[] @relation("RestaurantCategories")
-  orders     Order[]
-  menus  Menu[] // المنيو العامة للمطعم
+  ownerId      Int
+  owner        User         @relation(fields: [ownerId], references: [id])
+
+  branches     Branch[]
+  orders       Order[]
 }
+
 
 model Branch {
   id             Int           @id @default(autoincrement())
@@ -66,20 +66,29 @@ model Branch {
   address        String
   phone          String?
   deliveryTime   String?     
-  hasOffer       Boolean      @default(false)
-  offer          Int?         // نسبة الخصم
+  imageUrl       String?     
+  openTime       String?     
+  closeTime      String?     
+  isOpen         Boolean        @default(true)
+  hasOffer       Boolean        @default(false)
+  offer          Int?          
   reviews        Int?           
-  minOrder       Float?       @default(0)
-  createdAt      DateTime      @default(now())
+  minOrder       Float?         @default(0)
+  createdAt      DateTime       @default(now())
 
   ownerBranchId  Int
-  ownerBranch    User          @relation("OwnerBranch", fields: [ownerBranchId], references: [id])
-  cashiers       User[]        @relation("BranchCashiers")
-  restaurantId   Int
+  ownerBranch    User           @relation("OwnerBranch", fields: [ownerBranchId], references: [id])
 
-  restaurant     Restaurant    @relation(fields: [restaurantId], references: [id])
+  cashiers       User[]         @relation("BranchCashiers")
+
+  restaurantId   Int
+  restaurant     Restaurant     @relation(fields: [restaurantId], references: [id])
+
   orders         Order[]
-  menus      Menu[]
+
+  // 🔹 منيو واحدة فقط لكل فرع
+  menuId         Int?          @unique
+  menu           Menu?         @relation("BranchMenu", fields: [menuId], references: [id])
 }
 
 
@@ -91,23 +100,19 @@ model Menu {
   isActive      Boolean      @default(true)
   createdAt     DateTime     @default(now())
 
-  // 🔹 ممكن تبقى المنيو للمطعم كله أو لفرع معين
-  restaurantId  Int?
-  branchId      Int?
+  // 🔹 المنيو مربوطة بفرع واحد فقط
+  branch        Branch?      @relation("BranchMenu")
+  categories    Category[]
 
-  restaurant    Restaurant?  @relation(fields: [restaurantId], references: [id])
-  branch        Branch?      @relation(fields: [branchId], references: [id])
-
-  // 🔹 تحتوي على عناصر المنيو (الأطباق)
-  menuItems    MenuItem[]  @relation("MenuToMenuItem")
+  menuItems     MenuItem[]   @relation("MenuToMenuItem")
 }
-
 
 // ----------------- Category -----------------
 model Category {
   id            Int           @id @default(autoincrement())
   name          String
-  restaurants   Restaurant[]  @relation("RestaurantCategories")
+  menuId        Int?
+  menu          Menu?         @relation(fields: [menuId], references: [id])
   subCategories SubCategory[]
 }
 

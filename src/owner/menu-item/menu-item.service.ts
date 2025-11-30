@@ -1,4 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { existsSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
 import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
 import { PrismaService } from 'prisma/prisma.service';
@@ -114,6 +116,14 @@ export class MenuItemService {
       },
     });
 
+    if (
+      dto.imageUrl &&
+      existing.imageUrl &&
+      dto.imageUrl !== existing.imageUrl
+    ) {
+      this.removeImageFile(existing.imageUrl);
+    }
+
     return {
       message: 'تم تعديل العنصر بنجاح',
       data: updated,
@@ -127,9 +137,28 @@ export class MenuItemService {
     }
 
     await this.prisma.menuItem.delete({ where: { id } });
+    if (existing.imageUrl) {
+      this.removeImageFile(existing.imageUrl);
+    }
 
     return {
       message: 'تم حذف العنصر بنجاح',
     };
+  }
+
+  private removeImageFile(imageUrl: string) {
+    if (!imageUrl.startsWith('/uploads/')) {
+      return;
+    }
+    const relative = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+    const absolutePath = join(process.cwd(), relative);
+    if (existsSync(absolutePath)) {
+      try {
+        unlinkSync(absolutePath);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to remove menu item image', error);
+      }
+    }
   }
 }

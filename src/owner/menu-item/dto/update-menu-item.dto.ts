@@ -1,5 +1,10 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateMenuItemDto } from './create-menu-item.dto';
+import {
+  CreateMenuItemDto,
+  transformToBoolean,
+  transformToNumber,
+  transformToNumberArray,
+} from './create-menu-item.dto';
 import {
   IsString,
   IsOptional,
@@ -9,8 +14,10 @@ import {
   IsNotEmpty,
   IsArray,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class UpdateMenuItemDto extends PartialType(CreateMenuItemDto) {
+  @Transform(transformToNumber)
   @IsNotEmpty()
   @IsInt()
   id: number;
@@ -22,6 +29,7 @@ export class UpdateMenuItemDto extends PartialType(CreateMenuItemDto) {
   @IsString()
   description?: string;
 
+  @Transform(transformToNumber)
   @IsOptional()
   @IsNumber()
   price?: number;
@@ -30,15 +38,18 @@ export class UpdateMenuItemDto extends PartialType(CreateMenuItemDto) {
   @IsString()
   imageUrl?: string;
 
+  @Transform(transformToBoolean)
   @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
 
+  @Transform(transformToNumberArray)
   @IsOptional()
   @IsArray()
   @IsInt({ each: true })
   menuIds?: number[];
 
+  @Transform(transformToNumber)
   @IsOptional()
   @IsInt()
   subCategoryId?: number;
